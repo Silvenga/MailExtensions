@@ -3,7 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MailExtensions", "MailExtensions\MailExtensions.csproj", "{AAA295FA-3C3D-4D82-B2DB-DEB25701115A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MailExtensions", "src\MailExtensions\MailExtensions.csproj", "{AAA295FA-3C3D-4D82-B2DB-DEB25701115A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{607133E3-30E5-42D6-A10A-74505A378C12}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{4E026F21-2F48-43D1-93E0-312FC5FFF8D0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MailExtensions.Tests", "tests\MailExtensions.Tests\MailExtensions.Tests.csproj", "{322A4D92-8B03-4943-BB13-B66EE056709C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,8 +21,16 @@ Global
 		{AAA295FA-3C3D-4D82-B2DB-DEB25701115A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AAA295FA-3C3D-4D82-B2DB-DEB25701115A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AAA295FA-3C3D-4D82-B2DB-DEB25701115A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{322A4D92-8B03-4943-BB13-B66EE056709C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{322A4D92-8B03-4943-BB13-B66EE056709C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{322A4D92-8B03-4943-BB13-B66EE056709C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{322A4D92-8B03-4943-BB13-B66EE056709C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{AAA295FA-3C3D-4D82-B2DB-DEB25701115A} = {607133E3-30E5-42D6-A10A-74505A378C12}
+		{322A4D92-8B03-4943-BB13-B66EE056709C} = {4E026F21-2F48-43D1-93E0-312FC5FFF8D0}
 	EndGlobalSection
 EndGlobal

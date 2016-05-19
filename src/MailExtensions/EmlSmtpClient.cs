@@ -164,10 +164,10 @@
                         throw;
                     }
 
-                    Abort();
-                    if (timedOut)
+                    Method("Abort");
+                    if (!GetField<bool>("timedOut"))
                     {
-                        throw new SmtpException(SR.GetString(SR.net_timeout));
+                        throw new SmtpException("net_timeout");
                     }
 
                     if (e is SecurityException ||
@@ -177,7 +177,7 @@
                         throw;
                     }
 
-                    throw new SmtpException(SR.GetString(SR.SmtpSendMailFailure), e);
+                    throw new SmtpException("SmtpSendMailFailure", e);
                 }
                 finally
                 {
