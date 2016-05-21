@@ -1,6 +1,7 @@
 ﻿namespace MailExtensions
 {
     using System;
+    using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Net.Mail;
@@ -18,7 +19,7 @@
             _client = client;
         }
 
-        public void Send(MailMessage message, Action<Stream> writeEmlString, DeliveryNotificationOptions options = DeliveryNotificationOptions.None)
+        public void Send(string from, List<string> to, Action<Stream> writeEmlString, DeliveryNotificationOptions options = DeliveryNotificationOptions.None)
         {
             if (_client.GetField<bool>("disposed"))
             {
@@ -31,45 +32,17 @@
                     throw new InvalidOperationException("net_inasync");
                 }
 
-                if (message == null)
-                {
-                    throw new ArgumentNullException("message");
-                }
-
                 if (_client.DeliveryMethod == SmtpDeliveryMethod.Network)
                 {
                     _client.Method("CheckHostAndPort");
                 }
 
-                MailAddressCollection recipients = new MailAddressCollection();
-
-                if (message.From == null)
+                var recipients = new MailAddressCollection();
+                foreach (var email in to)
                 {
-                    throw new InvalidOperationException("SmtpFromRequired");
+                    // TODO - display name?
+                    recipients.Add(new MailAddress(email));
                 }
-
-                if (message.To != null)
-                {
-                    foreach (MailAddress address in message.To)
-                    {
-                        recipients.Add(address);
-                    }
-                }
-                if (message.Bcc != null)
-                {
-                    foreach (MailAddress address in message.Bcc)
-                    {
-                        recipients.Add(address);
-                    }
-                }
-                if (message.CC != null)
-                {
-                    foreach (MailAddress address in message.CC)
-                    {
-                        recipients.Add(address);
-                    }
-                }
-
                 if (recipients.Count == 0)
                 {
                     throw new InvalidOperationException("SmtpRecipientRequired");
@@ -90,8 +63,8 @@
                     var timeout = _client.GetField<int>("transport", "timeout");
                     var timer = new Timer(new TimerCallback(this.TimeOutCallback), null, timeout, timeout);
                     _client.SetField(timer, "timer");
-                    bool allowUnicode = false;
-                    
+                    var allowUnicode = false;
+
                     _client.Method("GetConnection");
                     //GetConnection();
 
@@ -99,12 +72,13 @@
                     allowUnicode = _client.Method<bool>("IsUnicodeSupported");
                     // IsUnicodeSupported();
 
-                    _client.Method("ValidateUnicodeRequirement", message, recipients, allowUnicode);
+                    //_client.Method("ValidateUnicodeRequirement", message, recipients, allowUnicode);
                     //ValidateUnicodeRequirement(message, recipients, allowUnicode);
 
                     var args = new object[]
                     {
-                        message.Sender ?? message.From, recipients,
+                        new MailAddress(from),
+                        recipients,
                         BuildDeliveryStatusNotificationString(options),
                         allowUnicode,
                         null
@@ -116,12 +90,12 @@
                     //var writer = transport.SendMail(message.Sender ?? message.From, recipients,
                     //    message.BuildDeliveryStatusNotificationString(), allowUnicode, out recipientException);
 
-                    _client.SetField(message, "message");
+                    //_client.SetField(message, "message");
                     //message.Send(writer, DeliveryMethod != SmtpDeliveryMethod.Network, allowUnicode);
 
                     var mailStream = writer.GetField<Stream>("stream"); //writer.GetField<Stream>("stream");
                     writeEmlString.Invoke(mailStream);
-                    
+
                     writer.Method("Close");
                     transport.Method("ReleaseConnection");
                     //transport.ReleaseConnection();
@@ -156,11 +130,13 @@
                 }
                 finally
                 {
+                    _client.SetProperty(false, "InCall");
                     //InCall = false;
-                    //if (timer != null)
-                    //{
-                    //    timer.Dispose();
-                    //}
+                    var timer = _client.GetField<IDisposable>("timer");
+                    if (timer != null)
+                    {
+                        timer.Dispose();
+                    }
                 }
             }
             finally
@@ -181,9 +157,9 @@
         {
             if (deliveryStatusNotification != DeliveryNotificationOptions.None)
             {
-                StringBuilder s = new StringBuilder(" NOTIFY=");
+                var s = new StringBuilder(" NOTIFY=");
 
-                bool oneSet = false;
+                var oneSet = false;
 
                 //none
                 if (deliveryStatusNotification == DeliveryNotificationOptions.Never)
@@ -216,7 +192,7 @@
                 }
                 return s.ToString();
             }
-            return String.Empty;
+            return string.Empty;
         }
     }
 }

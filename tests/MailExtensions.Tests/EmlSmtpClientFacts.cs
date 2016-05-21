@@ -1,5 +1,6 @@
 ﻿namespace MailExtensions.Tests
 {
+    using System.Collections.Generic;
     using System.Net.Mail;
 
     using Xunit;
@@ -16,14 +17,12 @@
             // Act
 
             var message = new MailMessage("from-test@silvenga.com", "test-to@silvenga.com", "subject", "body");
+            message.IsBodyHtml = true;
             var stream = message.ToEmlStream();
 
             //smtpClient.Send(message);
 
-            eml.Send(new MailMessage("from-test@silvenga.com", "test-to@silvenga.com"), stream1 =>
-            {
-                stream.CopyTo(stream1);
-            });
+            eml.Send("from-test@silvenga.com", new List<string> {"test-to@silvenga.com"}, stream1 => { stream.CopyTo(stream1); });
 
             // Assert
         }
