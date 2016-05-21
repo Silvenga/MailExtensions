@@ -1,11 +1,12 @@
 ﻿namespace MailExtensions
 {
     using System;
+    using System.IO;
     using System.Linq;
     using System.Net.Mail;
-    using System.Reflection;
     using System.Security;
     using System.Security.Authentication;
+    using System.Text;
     using System.Threading;
 
     public class EmlSmtpClient
@@ -17,57 +18,15 @@
             _client = client;
         }
 
-        private const BindingFlags Binding = BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public;
-
-        private T Method<T>(string methodName, params object[] args)
+        public void Send(MailMessage message, Action<Stream> writeEmlString, DeliveryNotificationOptions options = DeliveryNotificationOptions.None)
         {
-            var dynMethod = _client.GetType().GetMethod(methodName, Binding);
-            return (T) dynMethod.Invoke(_client, args);
-        }
-
-        private void Method(string methodName, params object[] args)
-        {
-            var dynMethod = _client.GetType().GetMethod(methodName, Binding);
-            dynMethod.Invoke(_client, args);
-        }
-
-        private T GetField<T>(params string[] fieldName)
-        {
-            object last = _client;
-            foreach (var name in fieldName)
-            {
-                var field = last.GetType().GetField(name, Binding);
-                last = field.GetValue(last);
-            }
-
-            return (T) last;
-        }
-
-        private void SetField(object value, params string[] fieldName)
-        {
-            object last = _client;
-            for (var index = 0; index < fieldName.Length - 1; index++)
-            {
-                var name = fieldName[index];
-                var field = last.GetType().GetField(name, Binding);
-                last = field.GetValue(last);
-            }
-
-            var prop = last.GetType().GetField(fieldName.Last(), Binding);
-            prop.SetValue(last, value);
-        }
-
-        public void Send(MailMessage message)
-        {
-            if (GetField<bool>("disposed"))
+            if (_client.GetField<bool>("disposed"))
             {
                 throw new ObjectDisposedException(this.GetType().FullName);
             }
             try
             {
-                SmtpFailedRecipientException recipientException = null;
-
-                if (GetField<bool>("inCall"))
+                if (_client.GetField<bool>("inCall"))
                 {
                     throw new InvalidOperationException("net_inasync");
                 }
@@ -79,7 +38,7 @@
 
                 if (_client.DeliveryMethod == SmtpDeliveryMethod.Network)
                 {
-                    Method("CheckHostAndPort");
+                    _client.Method("CheckHostAndPort");
                 }
 
                 MailAddressCollection recipients = new MailAddressCollection();
@@ -116,56 +75,72 @@
                     throw new InvalidOperationException("SmtpRecipientRequired");
                 }
 
-                SetField(false, "transport", "m_IdentityRequired");
+                var transport = _client.GetField<object>("transport");
+                //transport.SetProperty(false, "IdentityRequired");
+                transport.SetProperty(false, "IdentityRequired");
                 //transport.IdentityRequired = false; // everything completes on the same thread.
 
                 try
                 {
-                    SetField(true, "inCall");
+                    _client.SetField(true, "inCall");
                     //InCall = true;
-                    SetField(false, "timedOut");
+                    _client.SetField(false, "timedOut");
                     //timedOut = false;
 
-                    var timeout = GetField<int>("transport", "timeout");
+                    var timeout = _client.GetField<int>("transport", "timeout");
                     var timer = new Timer(new TimerCallback(this.TimeOutCallback), null, timeout, timeout);
-                    SetField(timer, "timer");
+                    _client.SetField(timer, "timer");
                     bool allowUnicode = false;
-
-                    Type mailWriterType = _client.GetType().Assembly.GetType("System.Net.Mail.MailWriter");
-                    //dynamic writer = Activator.CreateInstance(mailWriterType, true);
-                    //MailWriter writer;
-                    Method("GetConnection");
+                    
+                    _client.Method("GetConnection");
                     //GetConnection();
 
                     // Detected durring GetConnection(), restrictable using the DeliveryFormat paramiter
-                    allowUnicode = Method<bool>("IsUnicodeSupported");
+                    allowUnicode = _client.Method<bool>("IsUnicodeSupported");
                     // IsUnicodeSupported();
 
-                    Method("ValidateUnicodeRequirement", message, recipients, allowUnicode);
+                    _client.Method("ValidateUnicodeRequirement", message, recipients, allowUnicode);
                     //ValidateUnicodeRequirement(message, recipients, allowUnicode);
-                    dynamic writer = transport.SendMail(message.Sender ?? message.From, recipients,
-                        message.BuildDeliveryStatusNotificationString(), allowUnicode, out recipientException);
 
-                    this.message = message;
-                    message.Send(writer, DeliveryMethod != SmtpDeliveryMethod.Network, allowUnicode);
-                    writer.Close();
-                    transport.ReleaseConnection();
+                    var args = new object[]
+                    {
+                        message.Sender ?? message.From, recipients,
+                        BuildDeliveryStatusNotificationString(options),
+                        allowUnicode,
+                        null
+                    };
+                    var recipientException = (SmtpFailedRecipientException) args.Last();
+
+                    var writer = transport.Method<object>("SendMail", args);
+
+                    //var writer = transport.SendMail(message.Sender ?? message.From, recipients,
+                    //    message.BuildDeliveryStatusNotificationString(), allowUnicode, out recipientException);
+
+                    _client.SetField(message, "message");
+                    //message.Send(writer, DeliveryMethod != SmtpDeliveryMethod.Network, allowUnicode);
+
+                    var mailStream = writer.GetField<Stream>("stream"); //writer.GetField<Stream>("stream");
+                    writeEmlString.Invoke(mailStream);
+                    
+                    writer.Method("Close");
+                    transport.Method("ReleaseConnection");
+                    //transport.ReleaseConnection();
 
                     //throw if we couldn't send to any of the recipients
-                    if (DeliveryMethod == SmtpDeliveryMethod.Network && recipientException != null)
+                    if (recipientException != null)
                     {
                         throw recipientException;
                     }
                 }
                 catch (Exception e)
                 {
-                    if (e is SmtpFailedRecipientException && !((SmtpFailedRecipientException) e).fatal)
+                    if (e is SmtpFailedRecipientException && !e.GetField<bool>("fatal"))
                     {
                         throw;
                     }
 
-                    Method("Abort");
-                    if (!GetField<bool>("timedOut"))
+                    _client.Method("Abort");
+                    if (_client.GetField<bool>("timedOut"))
                     {
                         throw new SmtpException("net_timeout");
                     }
@@ -195,11 +170,53 @@
 
         void TimeOutCallback(object state)
         {
-            if (!GetField<bool>("timedOut"))
+            if (!_client.GetField<bool>("timedOut"))
             {
-                SetField(true, "timedOut");
-                Method("Abort");
+                _client.SetField(true, "timedOut");
+                _client.Method("Abort");
             }
+        }
+
+        private string BuildDeliveryStatusNotificationString(DeliveryNotificationOptions deliveryStatusNotification)
+        {
+            if (deliveryStatusNotification != DeliveryNotificationOptions.None)
+            {
+                StringBuilder s = new StringBuilder(" NOTIFY=");
+
+                bool oneSet = false;
+
+                //none
+                if (deliveryStatusNotification == DeliveryNotificationOptions.Never)
+                {
+                    s.Append("NEVER");
+                    return s.ToString();
+                }
+
+                if ((((int) deliveryStatusNotification) & (int) DeliveryNotificationOptions.OnSuccess) > 0)
+                {
+                    s.Append("SUCCESS");
+                    oneSet = true;
+                }
+                if ((((int) deliveryStatusNotification) & (int) DeliveryNotificationOptions.OnFailure) > 0)
+                {
+                    if (oneSet)
+                    {
+                        s.Append(",");
+                    }
+                    s.Append("FAILURE");
+                    oneSet = true;
+                }
+                if ((((int) deliveryStatusNotification) & (int) DeliveryNotificationOptions.Delay) > 0)
+                {
+                    if (oneSet)
+                    {
+                        s.Append(",");
+                    }
+                    s.Append("DELAY");
+                }
+                return s.ToString();
+            }
+            return String.Empty;
         }
     }
 }

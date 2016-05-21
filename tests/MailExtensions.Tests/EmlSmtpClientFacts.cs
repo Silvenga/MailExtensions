@@ -9,12 +9,21 @@
         [Fact]
         public void Can_send_mail()
         {
-            var smtpClient = new SmtpClient("10.0.5.100", 25);
+            var smtpClient = new SmtpClient("dev1.silvenga.net", 27);
 
             var eml = new EmlSmtpClient(smtpClient);
 
             // Act
-            eml.Send(new MailMessage("from-test@silvenga.com", "test-to@silvenga.com"));
+
+            var message = new MailMessage("from-test@silvenga.com", "test-to@silvenga.com", "subject", "body");
+            var stream = message.ToEmlStream();
+
+            //smtpClient.Send(message);
+
+            eml.Send(new MailMessage("from-test@silvenga.com", "test-to@silvenga.com"), stream1 =>
+            {
+                stream.CopyTo(stream1);
+            });
 
             // Assert
         }
