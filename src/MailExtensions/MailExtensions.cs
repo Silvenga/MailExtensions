@@ -48,10 +48,8 @@ namespace MailExtensions
                 binder: null,
                 target: mail,
                 args: new[] {mailWriter, true, true});
-
-            mailWriter.Method("Close");
-
-            var buffer = stream.GetBuffer();
+            
+            var buffer = stream.ToArray();
             var real = new MemoryStream(buffer);
 
             return real;

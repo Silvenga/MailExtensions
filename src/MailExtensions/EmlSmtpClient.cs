@@ -10,7 +10,7 @@
     using System.Text;
     using System.Threading;
 
-    public class EmlSmtpClient
+    public class EmlSmtpClient : IDisposable
     {
         private readonly SmtpClient _client;
 
@@ -193,6 +193,11 @@
                 return s.ToString();
             }
             return string.Empty;
+        }
+
+        public void Dispose()
+        {
+            _client.Dispose();
         }
     }
 }
